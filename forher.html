@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Counting Down · Just For You 🎂</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ── TOKENS ── */
+:root {
+  --bg:      #fdf6f0;
+  --bg2:     #faf0e8;
+  --rose:    #c9536a;
+  --rose-l:  #e8849a;
+  --blush:   #f5cdd5;
+  --gold:    #b8895a;
+  --gold-l:  #deba94;
+  --ink:     #2a1018;
+  --ink2:    #7a4455;
+  --ink3:    #b8909a;
+  --serif:   'Playfair Display', Georgia, serif;
+  --sans:    'Jost', sans-serif;
+  --border:  rgba(201,83,106,.12);
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  font-family: var(--sans);
+  color: var(--ink);
+  overflow-x: hidden;
+  cursor: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── CURSOR ── */
+.cur {
+  position: fixed; border-radius: 50%;
+  pointer-events: none; z-index: 9999;
+  transform: translate(-50%,-50%);
+}
+#cd { width: 6px; height: 6px; background: var(--rose); }
+#cr { width: 28px; height: 28px; border: 1.5px solid rgba(201,83,106,.45); transition: left .1s, top .1s; }
+
+/* ── CANVAS ── */
+#cc { position:fixed;inset:0;pointer-events:none;z-index:600; }
+
+/* ── NOISE TEXTURE ── */
+.noise {
+  position: fixed; inset:0; z-index:1; pointer-events:none; opacity:.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px;
+}
+
+/* ── MESH BG ── */
+.mesh { position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden; }
+.mb {
+  position:absolute; border-radius:50%;
+  filter:blur(120px); animation: mbDrift ease-in-out infinite;
+}
+.mb1{width:700px;height:700px;background:#f5cdd5;opacity:.45;top:-20%;left:-15%;animation-duration:16s;}
+.mb2{width:500px;height:500px;background:#fde8c8;opacity:.4;bottom:-15%;right:-10%;animation-duration:12s;animation-delay:5s;}
+.mb3{width:350px;height:350px;background:#f9dde5;opacity:.3;top:50%;left:50%;animation-duration:14s;animation-delay:8s;}
+@keyframes mbDrift{
+  0%,100%{transform:translate(0,0) scale(1);}
+  33%{transform:translate(20px,-30px) scale(1.05);}
+  66%{transform:translate(-15px,20px) scale(.95);}
+}
+
+/* ── FLOATS ── */
+#floats{position:fixed;inset:0;pointer-events:none;z-index:2;}
+.petal{position:absolute;animation:petalUp linear infinite;opacity:0;}
+@keyframes petalUp{
+  0%{transform:translateY(108vh) rotate(0deg);opacity:0;}
+  7%{opacity:.5;}93%{opacity:.3;}
+  100%{transform:translateY(-8vh) rotate(500deg);opacity:0;}
+}
+
+/* ── PAGE ── */
+.page{position:relative;z-index:10;}
+
+/* ═══════════════════════════════
+   HERO
+═══════════════════════════════ */
+.hero{
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;padding:80px 24px 60px;
+  position:relative;
+}
+
+.hero-kicker{
+  font-family:var(--sans);
+  font-size:.62rem;font-weight:500;letter-spacing:5px;
+  text-transform:uppercase;color:var(--rose);
+  display:inline-flex;align-items:center;gap:14px;
+  margin-bottom:40px;
+  opacity:0;animation:fadeUp .8s .2s forwards;
+}
+.kl{width:32px;height:1px;background:linear-gradient(90deg,transparent,var(--rose));}
+.kl.r{background:linear-gradient(90deg,var(--rose),transparent);}
+
+.hero-pre{
+  font-family:var(--serif);
+  font-style:italic;font-weight:400;
+  font-size:clamp(1.1rem,3vw,1.6rem);
+  color:var(--ink2);margin-bottom:10px;
+  opacity:0;animation:fadeUp .9s .45s forwards;
+}
+
+.hero-title{
+  font-family:var(--serif);
+  font-size:clamp(3.5rem,11vw,8.5rem);
+  font-weight:700;line-height:.88;
+  color:var(--ink);
+  opacity:0;animation:fadeUp 1s .65s forwards;
+}
+.hero-title em{
+  color:var(--rose);font-style:italic;display:block;
+  background:linear-gradient(135deg,var(--rose),var(--gold));
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+.hero-sub{
+  font-family:var(--serif);font-style:italic;
+  font-size:clamp(1rem,2.5vw,1.4rem);
+  color:var(--ink3);margin-top:18px;
+  opacity:0;animation:fadeUp .9s .85s forwards;
+}
+
+/* ── COUNTDOWN ── */
+.countdown{
+  margin:52px 0 36px;
+  opacity:0;animation:fadeUp .9s 1.05s forwards;
+}
+
+.cd-grid{
+  display:flex;gap:12px;justify-content:center;flex-wrap:wrap;
+}
+
+.cd-box{
+  background:white;
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:28px 24px 22px;
+  min-width:100px;
+  box-shadow:0 8px 40px rgba(201,83,106,.08),0 2px 8px rgba(0,0,0,.04);
+  position:relative;overflow:hidden;
+  transition:transform .3s,box-shadow .3s;
+}
+.cd-box:hover{transform:translateY(-4px);box-shadow:0 16px 50px rgba(201,83,106,.14);}
+.cd-box::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--rose),var(--gold));
+  border-radius:0 0 20px 20px;
+}
+.cd-num{
+  font-family:var(--serif);
+  font-size:clamp(2.2rem,5vw,3.2rem);
+  font-weight:700;font-style:italic;
+  color:var(--rose);line-height:1;display:block;
+}
+.cd-lbl{
+  font-size:.58rem;letter-spacing:3px;
+  text-transform:uppercase;color:var(--ink3);
+  margin-top:6px;display:block;
+}
+
+/* Birthday mode */
+.birthday-banner{
+  display:none;
+  font-family:var(--serif);font-style:italic;
+  font-size:clamp(1.4rem,4vw,2.4rem);
+  color:var(--rose);
+  padding:20px 32px;
+  background:white;border:1px solid var(--border);
+  border-radius:20px;box-shadow:0 8px 40px rgba(201,83,106,.12);
+}
+
+.hero-hint{
+  font-size:.62rem;letter-spacing:3px;
+  text-transform:uppercase;color:var(--ink3);
+  opacity:0;animation:fadeUp .8s 1.3s forwards;
+}
+
+.scroll-cue{
+  position:absolute;bottom:36px;left:50%;
+  transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  opacity:0;animation:fadeUp 1s 2s forwards;
+}
+.sc-lbl{font-size:.56rem;letter-spacing:4px;text-transform:uppercase;color:var(--ink3);}
+.sc-line{
+  width:1px;height:48px;
+  background:linear-gradient(180deg,rgba(201,83,106,.6),transparent);
+  animation:scLine 2s ease-in-out infinite;
+}
+@keyframes scLine{
+  0%{transform:scaleY(0);transform-origin:top;opacity:1;}
+  50%{transform:scaleY(1);transform-origin:top;}
+  51%{transform-origin:bottom;}
+  100%{transform:scaleY(0);transform-origin:bottom;opacity:0;}
+}
+
+/* ═══════════════════════════════
+   MESSAGES SECTION
+═══════════════════════════════ */
+.section{padding:90px 24px;max-width:860px;margin:0 auto;}
+
+.sec-label{
+  display:flex;align-items:center;gap:14px;
+  font-size:.6rem;letter-spacing:4.5px;
+  text-transform:uppercase;color:var(--rose);
+  font-weight:500;margin-bottom:50px;
+}
+.sl{height:1px;flex:1;background:linear-gradient(90deg,rgba(201,83,106,.3),transparent);}
+
+/* Message cards */
+.msg-card{
+  background:white;
+  border:1px solid var(--border);
+  border-radius:24px;
+  padding:48px 52px;
+  margin-bottom:24px;
+  position:relative;overflow:hidden;
+  box-shadow:0 12px 50px rgba(201,83,106,.06),0 2px 10px rgba(0,0,0,.03);
+  opacity:0;transform:translateY(32px);
+  transition:opacity .7s ease,transform .7s ease,box-shadow .3s;
+}
+.msg-card.visible{opacity:1;transform:translateY(0);}
+.msg-card:hover{box-shadow:0 20px 70px rgba(201,83,106,.12);}
+
+.msg-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--rose),var(--gold-l),var(--rose));
+  opacity:0;transition:opacity .3s;
+}
+.msg-card:hover::before{opacity:1;}
+
+.msg-num{
+  font-family:var(--serif);
+  font-size:5rem;font-style:italic;font-weight:700;
+  color:rgba(201,83,106,.06);
+  position:absolute;top:16px;right:28px;
+  line-height:1;user-select:none;
+}
+
+.msg-icon{font-size:1.8rem;margin-bottom:18px;display:block;}
+
+.msg-text{
+  font-family:var(--serif);
+  font-size:clamp(1.05rem,2.3vw,1.32rem);
+  font-weight:400;font-style:italic;
+  line-height:1.95;color:var(--ink);
+}
+.msg-text strong{color:var(--rose);font-style:normal;font-weight:500;}
+.msg-text em{color:var(--gold);font-style:italic;}
+
+/* ── QUOTE DIVIDER ── */
+.quote-div{
+  padding:60px 32px;max-width:700px;margin:0 auto;
+  text-align:center;
+  opacity:0;transform:translateY(24px);
+  transition:opacity .7s,transform .7s;
+}
+.quote-div.visible{opacity:1;transform:translateY(0);}
+.qd-mark{
+  font-family:var(--serif);font-size:6rem;
+  font-style:italic;line-height:.5;
+  color:rgba(201,83,106,.1);
+  display:block;user-select:none;
+}
+.qd-text{
+  font-family:var(--serif);font-style:italic;
+  font-size:clamp(1.3rem,3.2vw,1.9rem);
+  font-weight:400;color:var(--ink2);
+  line-height:1.7;
+}
+.qd-text strong{color:var(--rose);}
+
+/* ── THIN DIVIDER ── */
+.div-line{
+  display:flex;align-items:center;gap:20px;
+  padding:0 32px;max-width:860px;margin:0 auto;
+}
+.dl{flex:1;height:1px;background:var(--border);}
+.di{font-size:.9rem;opacity:.35;}
+
+/* ── FINAL CTA ── */
+.cta{
+  text-align:center;padding:100px 24px 120px;
+  position:relative;
+}
+.cta::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 70% 60% at 50% 50%,rgba(201,83,106,.05),transparent);
+  pointer-events:none;
+}
+.cta-eyebrow{
+  font-size:.6rem;letter-spacing:5px;
+  text-transform:uppercase;color:var(--gold);
+  margin-bottom:20px;display:block;
+}
+.cta-title{
+  font-family:var(--serif);
+  font-size:clamp(2rem,5.5vw,4rem);
+  font-weight:700;font-style:italic;
+  color:var(--ink);margin-bottom:14px;
+  line-height:1.1;
+}
+.cta-title span{color:var(--rose);}
+.cta-sub{
+  font-size:.9rem;color:var(--ink3);
+  margin-bottom:48px;line-height:1.8;
+}
+.cta-heart{
+  font-size:4rem;display:inline-block;
+  filter:drop-shadow(0 4px 20px rgba(201,83,106,.4));
+  animation:heartBeat 1.5s ease-in-out infinite;
+  cursor:pointer;
+}
+@keyframes heartBeat{
+  0%,100%{transform:scale(1);}
+  14%{transform:scale(1.22);}
+  28%{transform:scale(1);}
+  42%{transform:scale(1.12);}
+  56%{transform:scale(1);}
+}
+
+/* ── FOOTER ── */
+.footer{
+  text-align:center;padding:40px 24px 56px;
+  border-top:1px solid var(--border);
+  position:relative;z-index:10;
+}
+.footer p{
+  font-family:var(--serif);font-style:italic;
+  font-size:.95rem;color:var(--ink3);
+}
+.footer strong{color:var(--rose);font-weight:400;}
+
+/* Balloon */
+.balloon{
+  position:fixed;pointer-events:none;z-index:300;
+  animation:bUp linear forwards;
+}
+@keyframes bUp{
+  from{transform:translateY(110vh);opacity:1;}
+  85%{opacity:1;}to{transform:translateY(-15vh);opacity:0;}
+}
+
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(20px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+@media(max-width:600px){
+  .msg-card{padding:36px 26px;}
+  .cd-box{min-width:72px;padding:20px 14px 16px;}
+  .cd-num{font-size:2rem;}
+}
+</style>
+</head>
+<body>
+
+<div class="cur" id="cd"></div>
+<div class="cur" id="cr"></div>
+<canvas id="cc"></canvas>
+<div class="noise"></div>
+<div class="mesh">
+  <div class="mb mb1"></div>
+  <div class="mb mb2"></div>
+  <div class="mb mb3"></div>
+</div>
+<div id="floats"></div>
+
+<div class="page">
+
+  <!-- ══ HERO ══ -->
+  <section class="hero">
+    <div class="hero-kicker">
+      <span class="kl"></span>
+      Her Birthday · June 2nd
+      <span class="kl r"></span>
+    </div>
+
+    <p class="hero-pre">counting down to</p>
+    <h1 class="hero-title">
+      Your Most<br><em>Special Day</em>
+    </h1>
+    <p class="hero-sub">because you deserve to know you're being waited for 🎂</p>
+
+    <div class="countdown" id="countdown">
+      <div class="cd-grid" id="cdGrid">
+        <div class="cd-box">
+          <span class="cd-num" id="cDays">--</span>
+          <span class="cd-lbl">Days</span>
+        </div>
+        <div class="cd-box">
+          <span class="cd-num" id="cHours">--</span>
+          <span class="cd-lbl">Hours</span>
+        </div>
+        <div class="cd-box">
+          <span class="cd-num" id="cMins">--</span>
+          <span class="cd-lbl">Minutes</span>
+        </div>
+        <div class="cd-box">
+          <span class="cd-num" id="cSecs">--</span>
+          <span class="cd-lbl">Seconds</span>
+        </div>
+      </div>
+      <div class="birthday-banner" id="bdBanner">
+        🎂 Happy Birthday meri jaan! Aaj tera din hai! ❤️
+      </div>
+    </div>
+
+    <p class="hero-hint">✨ har second tere liye count ho raha hai ✨</p>
+
+    <div class="scroll-cue">
+      <span class="sc-lbl">scroll</span>
+      <div class="sc-line"></div>
+    </div>
+  </section>
+
+  <!-- ══ MESSAGES ══ -->
+  <div class="section">
+    <div class="sec-label">
+      <span>Kuch words, sirf tere liye</span>
+      <div class="sl"></div>
+    </div>
+
+    <!-- Card 1 -->
+    <div class="msg-card scroll-reveal">
+      <div class="msg-num">01</div>
+      <span class="msg-icon">🌸</span>
+      <p class="msg-text">
+        Pata hai, <strong>June 2nd</strong> mere liye bhi ek khaas din hai…<br>
+        Kyuki uss din duniya mein <em>woh insaan aaya tha</em>,<br>
+        jisne meri zindagi ko itna pyara, itna warm<br>
+        aur itna <strong>meaning-ful</strong> bana diya hai. 😌💖
+      </p>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="msg-card scroll-reveal" style="transition-delay:.1s">
+      <div class="msg-num">02</div>
+      <span class="msg-icon">💫</span>
+      <p class="msg-text">
+        Tu sirf meri <strong>favourite person</strong> nahi hai —<br>
+        Tu mera sukoon hai, meri smile ka reason hai,<br>
+        aur woh feeling hai jo <em>har roz</em> mujhe<br>
+        thoda aur <strong>better</strong> bana deti hai. ❤️😭
+      </p>
+    </div>
+
+    <!-- Divider quote -->
+    <div class="quote-div scroll-reveal">
+      <span class="qd-mark">"</span>
+      <p class="qd-text">
+        Teri aankhon mein jo <strong>rooshni</strong> hai na,<br>
+        woh mujhe hamesha ghar jaisi lagti hai.
+      </p>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="msg-card scroll-reveal" style="transition-delay:.1s">
+      <div class="msg-num">03</div>
+      <span class="msg-icon">🌙</span>
+      <p class="msg-text">
+        Main yahi duaa karta hoon ki <strong>teri upcoming birthday</strong><br>
+        teri zindagi ki sabse khoobsurat yaadein le aaye…<br>
+        Ki teri aankhon mein <em>sirf khushi ho</em>,<br>
+        aur tera woh cute sa <strong>smile</strong> kabhi kam na ho. 😭💕
+      </p>
+    </div>
+
+    <!-- Card 4 -->
+    <div class="msg-card scroll-reveal" style="transition-delay:.1s">
+      <div class="msg-num">04</div>
+      <span class="msg-icon">🎀</span>
+      <p class="msg-text">
+        Mujhe teri <strong>har cheez pyaari</strong> lagti hai —<br>
+        teri awaaz, teri aankhein, tera gussa,<br>
+        tera childish hona aur woh way<br>
+        jisme tu mujhe feel karwati hai <em>loved</em>. 😔💖
+      </p>
+    </div>
+
+  </div>
+
+  <div class="div-line"><div class="dl"></div><div class="di">❤</div><div class="dl"></div></div>
+
+  <div class="section" style="padding-top:60px;padding-bottom:60px;">
+
+    <!-- Card 5 -->
+    <div class="msg-card scroll-reveal">
+      <div class="msg-num">05</div>
+      <span class="msg-icon">✨</span>
+      <p class="msg-text">
+        <strong>Thank you</strong> for existing in this world,<br>
+        thank you for being <em>exactly who you are</em>,<br>
+        aur thank you ki tune meri life mein<br>
+        aake sab kuch <strong>itna khoobsurat</strong> bana diya. 🫂❤️
+      </p>
+    </div>
+
+    <!-- Card 6 -->
+    <div class="msg-card scroll-reveal" style="transition-delay:.1s">
+      <div class="msg-num">06</div>
+      <span class="msg-icon">🎂</span>
+      <p class="msg-text">
+        Har second jo is countdown mein guzar raha hai —<br>
+        <em>mera dil thoda aur excited hota ja raha hai</em>.<br>
+        Sirf tujhe <strong>Happy Birthday</strong> kehne ke liye.<br>
+        Sirf teri smile dekhne ke liye. 😌💞
+      </p>
+    </div>
+
+  </div>
+
+  <!-- ══ CTA ══ -->
+  <div class="cta">
+    <span class="cta-eyebrow">June 2nd aa raha hai</span>
+    <h2 class="cta-title">Tere liye<br><span>wait kar raha hoon</span></h2>
+    <p class="cta-sub">Har din, har ghanta, har second. 💕</p>
+    <div class="cta-heart" onclick="launchParty()">🎂</div>
+  </div>
+
+  <footer class="footer">
+    <p>Made with every bit of love — <strong>sirf tere liye ❤️</strong></p>
+  </footer>
+
+</div>
+
+<script>
+/* Cursor */
+const cd=document.getElementById('cd'),cr=document.getElementById('cr');
+let mx=0,my=0;
+document.addEventListener('mousemove',e=>{
+  mx=e.clientX;my=e.clientY;
+  cd.style.left=mx+'px';cd.style.top=my+'px';
+});
+(function animR(){
+  cr.style.left=mx+'px';cr.style.top=my+'px';
+  requestAnimationFrame(animR);
+})();
+
+/* Floats */
+const fl=document.getElementById('floats');
+const syms=['🌸','💕','✨','💫','🎀','💖','🌷','💞','⭐','🌺'];
+function sp(){
+  const e=document.createElement('div');e.className='petal';
+  e.textContent=syms[Math.floor(Math.random()*syms.length)];
+  e.style.left=Math.random()*100+'vw';
+  const d=12+Math.random()*12;
+  e.style.animationDuration=d+'s';
+  e.style.animationDelay=Math.random()*4+'s';
+  e.style.fontSize=(.5+Math.random()*.9)+'rem';
+  fl.appendChild(e);
+  setTimeout(()=>e.remove(),(d+5)*1000);
+}
+setInterval(sp,800);
+for(let i=0;i<12;i++) setTimeout(sp,i*200);
+
+/* Countdown */
+function tick(){
+  const now=new Date();
+  const yr=now.getFullYear();
+  let bd=new Date(yr,5,2,0,0,0);
+  if(now>=bd) bd=new Date(yr+1,5,2,0,0,0);
+  const diff=bd-now;
+  const pad=n=>String(n).padStart(2,'0');
+
+  if(diff<=0){
+    document.getElementById('cdGrid').style.display='none';
+    document.getElementById('bdBanner').style.display='block';
+    launchParty();
+    return;
+  }
+
+  document.getElementById('cDays').textContent=pad(Math.floor(diff/864e5));
+  document.getElementById('cHours').textContent=pad(Math.floor(diff%864e5/36e5));
+  document.getElementById('cMins').textContent=pad(Math.floor(diff%36e5/6e4));
+  document.getElementById('cSecs').textContent=pad(Math.floor(diff%6e4/1000));
+}
+tick(); setInterval(tick,1000);
+
+/* Confetti */
+const canvas=document.getElementById('cc'),ctx=canvas.getContext('2d');
+let W,H;
+function rsz(){W=canvas.width=innerWidth;H=canvas.height=innerHeight;}
+rsz();window.addEventListener('resize',rsz);
+let pieces=[];
+const cols=['#c9536a','#b8895a','#e8849a','#deba94','#f5cdd5','#ff8fab','#fde8c8'];
+function mkP(x,y){
+  return{x,y,vx:(Math.random()-.5)*13,vy:-Math.random()*15-3,
+    r:Math.random()*6+2.5,color:cols[Math.floor(Math.random()*cols.length)],
+    rot:Math.random()*360,rs:(Math.random()-.5)*10,g:.4,life:1,sq:Math.random()>.45};
+}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  pieces=pieces.filter(p=>p.life>0);
+  pieces.forEach(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.vy+=p.g;p.rot+=p.rs;p.life-=.006;
+    ctx.save();ctx.globalAlpha=p.life;ctx.fillStyle=p.color;
+    ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);
+    if(p.sq)ctx.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);
+    else{ctx.beginPath();ctx.arc(0,0,p.r/2,0,Math.PI*2);ctx.fill();}
+    ctx.restore();
+  });
+  if(pieces.length)requestAnimationFrame(draw);
+  else ctx.clearRect(0,0,W,H);
+}
+function burst(x,y,n=70){for(let i=0;i<n;i++)pieces.push(mkP(x,y));draw();}
+
+function launchParty(){
+  for(let i=0;i<180;i++) setTimeout(()=>burst(Math.random()*W,H,1),i*10);
+  const em=['🎈','🎉','🌸','💕','🎊','✨','🎀','💖','🌷'];
+  for(let i=0;i<16;i++){
+    setTimeout(()=>{
+      const b=document.createElement('div');b.className='balloon';
+      b.textContent=em[Math.floor(Math.random()*em.length)];
+      b.style.left=(3+Math.random()*94)+'vw';
+      b.style.bottom='-60px';
+      b.style.fontSize=(1.8+Math.random()*2.4)+'rem';
+      const d=3+Math.random()*3.5;
+      b.style.animationDuration=d+'s';
+      document.body.appendChild(b);
+      setTimeout(()=>b.remove(),d*1000+200);
+    },i*150);
+  }
+}
+
+/* Scroll reveal */
+const revs=document.querySelectorAll('.scroll-reveal');
+const io=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');io.unobserve(e.target);}});
+},{threshold:.1});
+revs.forEach(el=>io.observe(el));
+
+/* Initial burst */
+setTimeout(()=>{for(let i=0;i<40;i++)pieces.push(mkP(Math.random()*W,H*.4));draw();},2000);
+</script>
+</body>
+</html>
